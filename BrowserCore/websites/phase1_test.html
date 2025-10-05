@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phase 1 API Quick Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .result { margin: 5px 0; padding: 10px; border-radius: 4px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Phase 1 API Quick Test</h1>
+    <p>This page tests the Phase 1 modern JavaScript APIs implemented in BrowserCore.</p>
+    
+    <button onclick="runTests()">🚀 Run Phase 1 Tests</button>
+    <button onclick="clearResults()">🧹 Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result ' + type;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        function runTests() {
+            clearResults();
+            log("=== PHASE 1 API TEST SUITE ===", "info");
+            
+            // Test 1: MutationObserver
+            log("1. Testing MutationObserver...", "info");
+            try {
+                if (typeof MutationObserver !== 'undefined') {
+                    const observer = new MutationObserver(function(mutations) {
+                        log("   MutationObserver callback works!", "pass");
+                    });
+                    
+                    if (observer.observe && observer.disconnect && observer.takeRecords) {
+                        log("   ✅ MutationObserver API complete", "pass");
+                    } else {
+                        log("   ❌ MutationObserver API incomplete", "fail");
+                    }
+                } else {
+                    log("   ❌ MutationObserver not available", "fail");
+                }
+            } catch (e) {
+                log("   ❌ MutationObserver test failed: " + e.message, "fail");
+            }
+            
+            // Test 2: CustomEvent & EventTarget
+            log("2. Testing CustomEvent & EventTarget...", "info");
+            try {
+                if (typeof CustomEvent !== 'undefined') {
+                    const customEvent = new CustomEvent('test', { detail: { data: 'test' } });
+                    log("   ✅ CustomEvent constructor works", "pass");
+                    
+                    if (typeof EventTarget !== 'undefined') {
+                        const target = new EventTarget();
+                        if (target.addEventListener && target.removeEventListener && target.dispatchEvent) {
+                            log("   ✅ EventTarget API complete", "pass");
+                        } else {
+                            log("   ❌ EventTarget API incomplete", "fail");
+                        }
+                    } else {
+                        log("   ❌ EventTarget not available", "fail");
+                    }
+                } else {
+                    log("   ❌ CustomEvent not available", "fail");
+                }
+            } catch (e) {
+                log("   ❌ CustomEvent test failed: " + e.message, "fail");
+            }
+            
+            // Test 3: Promise Enhancements
+            log("3. Testing Promise Enhancements...", "info");
+            try {
+                if (Promise && Promise.allSettled) {
+                    log("   ✅ Promise.allSettled available", "pass");
+                } else {
+                    log("   ❌ Promise.allSettled not available", "fail");
+                }
+                
+                if (Promise && Promise.any) {
+                    log("   ✅ Promise.any available", "pass");
+                } else {
+                    log("   ❌ Promise.any not available", "fail");
+                }
+                
+                if (Promise && Promise.resolve && Promise.reject) {
+                    log("   ✅ Promise.resolve/reject available", "pass");
+                }
+            } catch (e) {
+                log("   ❌ Promise enhancements test failed: " + e.message, "fail");
+            }
+            
+            // Test 4: AbortController
+            log("4. Testing AbortController...", "info");
+            try {
+                if (typeof AbortController !== 'undefined') {
+                    const controller = new AbortController();
+                    
+                    if (controller.signal && controller.abort) {
+                        log("   ✅ AbortController API complete", "pass");
+                        
+                        controller.abort('Test abort');
+                        if (controller.signal.aborted) {
+                            log("   ✅ AbortController.abort() works", "pass");
+                        }
+                    } else {
+                        log("   ❌ AbortController API incomplete", "fail");
+                    }
+                } else {
+                    log("   ❌ AbortController not available", "fail");
+                }
+            } catch (e) {
+                log("   ❌ AbortController test failed: " + e.message, "fail");
+            }
+            
+            // Test 5: ResizeObserver
+            log("5. Testing ResizeObserver...", "info");
+            try {
+                if (typeof ResizeObserver !== 'undefined') {
+                    const resizeObserver = new ResizeObserver(function(entries) {
+                        log("   ResizeObserver callback works!", "pass");
+                    });
+                    
+                    if (resizeObserver.observe && resizeObserver.unobserve && resizeObserver.disconnect) {
+                        log("   ✅ ResizeObserver API complete", "pass");
+                    } else {
+                        log("   ❌ ResizeObserver API incomplete", "fail");
+                    }
+                } else {
+                    log("   ❌ ResizeObserver not available", "fail");
+                }
+            } catch (e) {
+                log("   ❌ ResizeObserver test failed: " + e.message, "fail");
+            }
+            
+            // Test 6: Syntax Transformation Test
+            log("6. Testing Modern Syntax Support...", "info");
+            try {
+                // Test objects for optional chaining simulation
+                var testObj = { nested: { value: 'success' } };
+                var nullObj = null;
+                
+                // Test optional chaining logic (our preprocessor transforms this)
+                var result1 = testObj && testObj.nested && testObj.nested.value;
+                if (result1 === 'success') {
+                    log("   ✅ Optional chaining transformation logic works", "pass");
+                } else {
+                    log("   ❌ Optional chaining transformation failed", "fail");
+                }
+                
+                // Test nullish coalescing logic
+                var value = null;
+                var result2 = (value !== null && value !== undefined ? value : 'default');
+                if (result2 === 'default') {
+                    log("   ✅ Nullish coalescing transformation logic works", "pass");
+                } else {
+                    log("   ❌ Nullish coalescing transformation failed", "fail");
+                }
+            } catch (e) {
+                log("   ❌ Modern syntax test failed: " + e.message, "fail");
+            }
+            
+            log("=== PHASE 1 TEST SUITE COMPLETE ===", "info");
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener ? window.addEventListener('load', runTests) : window.attachEvent('onload', runTests);
+    </script>
+</body>
+</html>

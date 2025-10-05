@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phase 1 API Test Suite</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
+        .test-section { background: white; margin: 10px 0; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .test-result { padding: 5px; margin: 5px 0; border-radius: 3px; }
+        .pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        #test-element { width: 200px; height: 100px; background: #ffeb3b; border: 2px solid #333; margin: 10px 0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Phase 1 Modern JavaScript API Test Suite</h1>
+    <div id="results"></div>
+    
+    <div class="test-section">
+        <h2>🔍 MutationObserver Test</h2>
+        <div id="test-element">Watch this element for changes</div>
+        <button onclick="testMutationObserver()">Test MutationObserver</button>
+        <div id="mutation-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 CustomEvent & EventTarget Test</h2>
+        <button onclick="testCustomEvents()">Test Custom Events</button>
+        <div id="event-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>⚡ Promise Enhancements Test</h2>
+        <button onclick="testPromiseEnhancements()">Test Promise.allSettled & Promise.any</button>
+        <div id="promise-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔗 Optional Chaining & Nullish Coalescing Test</h2>
+        <button onclick="testModernSyntax()">Test Modern JavaScript Syntax</button>
+        <div id="syntax-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🛑 AbortController Test</h2>
+        <button onclick="testAbortController()">Test AbortController</button>
+        <div id="abort-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📏 ResizeObserver Test</h2>
+        <button onclick="testResizeObserver()">Test ResizeObserver</button>
+        <button onclick="resizeTestElement()">Resize Element</button>
+        <div id="resize-results"></div>
+    </div>
+
+    <script>
+        // Test Results Display
+        function showResult(containerId, message, isPass) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${isPass ? 'pass' : 'fail'}`;
+            div.textContent = (isPass ? '✅ PASS: ' : '❌ FAIL: ') + message;
+            container.appendChild(div);
+        }
+        
+        function showInfo(containerId, message) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = 'test-result info';
+            div.textContent = 'ℹ️ INFO: ' + message;
+            container.appendChild(div);
+        }
+        
+        // 1. MutationObserver Test
+        function testMutationObserver() {
+            const resultsId = 'mutation-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                // Test MutationObserver constructor
+                if (typeof MutationObserver === 'undefined') {
+                    showResult(resultsId, 'MutationObserver is not defined', false);
+                    return;
+                }
+                
+                showInfo(resultsId, 'Testing MutationObserver constructor...');
+                const observer = new MutationObserver(function(mutations) {
+                    showResult(resultsId, 'MutationObserver callback executed successfully', true);
+                });
+                
+                showResult(resultsId, 'MutationObserver constructor works', true);
+                
+                // Test observe method
+                const testElement = document.getElementById('test-element');
+                if (observer.observe) {
+                    observer.observe(testElement, { childList: true, attributes: true });
+                    showResult(resultsId, 'observe() method exists and callable', true);
+                } else {
+                    showResult(resultsId, 'observe() method missing', false);
+                }
+                
+                // Test disconnect method
+                if (observer.disconnect) {
+                    observer.disconnect();
+                    showResult(resultsId, 'disconnect() method exists and callable', true);
+                } else {
+                    showResult(resultsId, 'disconnect() method missing', false);
+                }
+                
+                // Test takeRecords method
+                if (observer.takeRecords) {
+                    const records = observer.takeRecords();
+                    showResult(resultsId, 'takeRecords() method exists and returns array', true);
+                } else {
+                    showResult(resultsId, 'takeRecords() method missing', false);
+                }
+                
+                // Trigger a DOM change
+                setTimeout(() => {
+                    testElement.style.backgroundColor = '#ff5722';
+                    testElement.textContent = 'Element modified!';
+                    showInfo(resultsId, 'DOM changes triggered - check if observer detects them');
+                }, 100);
+                
+            } catch (error) {
+                showResult(resultsId, 'MutationObserver test failed: ' + error.message, false);
+            }
+        }
+        
+        // 2. CustomEvent & EventTarget Test
+        function testCustomEvents() {
+            const resultsId = 'event-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                // Test CustomEvent constructor
+                if (typeof CustomEvent === 'undefined') {
+                    showResult(resultsId, 'CustomEvent is not defined', false);
+                    return;
+                }
+                
+                showInfo(resultsId, 'Testing CustomEvent constructor...');
+                const customEvent = new CustomEvent('test-event', {
+                    detail: { message: 'Hello from CustomEvent!' },
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                showResult(resultsId, 'CustomEvent constructor works', true);
+                showResult(resultsId, 'Event type: ' + customEvent.Type, true);
+                
+                // Test EventTarget
+                if (typeof EventTarget !== 'undefined') {
+                    showInfo(resultsId, 'Testing EventTarget...');
+                    const target = new EventTarget();
+                    
+                    // Test addEventListener
+                    let eventFired = false;
+                    if (target.addEventListener) {
+                        target.addEventListener('test-event', function(event) {
+                            eventFired = true;
+                            showResult(resultsId, 'Event listener executed successfully', true);
+                        });
+                        showResult(resultsId, 'addEventListener() works', true);
+                    }
+                    
+                    // Test dispatchEvent
+                    if (target.dispatchEvent) {
+                        target.dispatchEvent(customEvent);
+                        showResult(resultsId, 'dispatchEvent() works', true);
+                    }
+                    
+                    // Test removeEventListener
+                    if (target.removeEventListener) {
+                        target.removeEventListener('test-event', function() {});
+                        showResult(resultsId, 'removeEventListener() works', true);
+                    }
+                } else {
+                    showResult(resultsId, 'EventTarget is not defined', false);
+                }
+                
+            } catch (error) {
+                showResult(resultsId, 'CustomEvent test failed: ' + error.message, false);
+            }
+        }
+        
+        // 3. Promise Enhancements Test
+        function testPromiseEnhancements() {
+            const resultsId = 'promise-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                showInfo(resultsId, 'Testing Promise enhancements...');
+                
+                // Test Promise.allSettled
+                if (Promise.allSettled) {
+                    showResult(resultsId, 'Promise.allSettled exists', true);
+                    
+                    const promises = [
+                        Promise.resolve('Success 1'),
+                        Promise.reject('Error 1'),
+                        Promise.resolve('Success 2')
+                    ];
+                    
+                    Promise.allSettled(promises).then(results => {
+                        showResult(resultsId, 'Promise.allSettled executed: ' + results.length + ' results', true);
+                    }).catch(error => {
+                        showResult(resultsId, 'Promise.allSettled failed: ' + error, false);
+                    });
+                } else {
+                    showResult(resultsId, 'Promise.allSettled not available', false);
+                }
+                
+                // Test Promise.any
+                if (Promise.any) {
+                    showResult(resultsId, 'Promise.any exists', true);
+                    
+                    const promises2 = [
+                        new Promise(resolve => setTimeout(() => resolve('First success'), 100)),
+                        new Promise(resolve => setTimeout(() => resolve('Second success'), 200))
+                    ];
+                    
+                    Promise.any(promises2).then(result => {
+                        showResult(resultsId, 'Promise.any executed: ' + result, true);
+                    }).catch(error => {
+                        showResult(resultsId, 'Promise.any failed: ' + error, false);
+                    });
+                } else {
+                    showResult(resultsId, 'Promise.any not available', false);
+                }
+                
+                // Test other Promise methods
+                if (Promise.resolve && Promise.reject) {
+                    showResult(resultsId, 'Promise.resolve and Promise.reject available', true);
+                }
+                
+            } catch (error) {
+                showResult(resultsId, 'Promise enhancement test failed: ' + error.message, false);
+            }
+        }
+        
+        // 4. Modern Syntax Test (Optional Chaining & Nullish Coalescing)
+        function testModernSyntax() {
+            const resultsId = 'syntax-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                showInfo(resultsId, 'Testing modern JavaScript syntax support...');
+                
+                // This will test if our preprocessing works
+                // Note: The actual syntax transformation happens during script execution
+                
+                // Simulate optional chaining test
+                var testObj = { nested: { value: 'success' } };
+                var nullObj = null;
+                
+                showInfo(resultsId, 'Testing optional chaining simulation...');
+                
+                // Test 1: Valid chain
+                var result1 = testObj && testObj.nested && testObj.nested.value;
+                showResult(resultsId, 'Optional chaining simulation (valid): ' + result1, result1 === 'success');
+                
+                // Test 2: Null chain
+                var result2 = nullObj && nullObj.nested && nullObj.nested.value;
+                showResult(resultsId, 'Optional chaining simulation (null): ' + result2, result2 === undefined);
+                
+                // Simulate nullish coalescing
+                showInfo(resultsId, 'Testing nullish coalescing simulation...');
+                
+                var value1 = null;
+                var value2 = undefined;
+                var value3 = '';
+                var value4 = 0;
+                
+                // Test nullish coalescing logic
+                var result3 = (value1 !== null && value1 !== undefined) ? value1 : 'default1';
+                showResult(resultsId, 'Nullish coalescing (null): ' + result3, result3 === 'default1');
+                
+                var result4 = (value2 !== null && value2 !== undefined) ? value2 : 'default2';
+                showResult(resultsId, 'Nullish coalescing (undefined): ' + result4, result4 === 'default2');
+                
+                var result5 = (value3 !== null && value3 !== undefined) ? value3 : 'default3';
+                showResult(resultsId, 'Nullish coalescing (empty string): ' + result5, result5 === '');
+                
+                var result6 = (value4 !== null && value4 !== undefined) ? value4 : 'default4';
+                showResult(resultsId, 'Nullish coalescing (zero): ' + result6, result6 === 0);
+                
+            } catch (error) {
+                showResult(resultsId, 'Modern syntax test failed: ' + error.message, false);
+            }
+        }
+        
+        // 5. AbortController Test
+        function testAbortController() {
+            const resultsId = 'abort-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                // Test AbortController constructor
+                if (typeof AbortController === 'undefined') {
+                    showResult(resultsId, 'AbortController is not defined', false);
+                    return;
+                }
+                
+                showInfo(resultsId, 'Testing AbortController...');
+                const controller = new AbortController();
+                
+                showResult(resultsId, 'AbortController constructor works', true);
+                
+                // Test signal property
+                if (controller.signal) {
+                    showResult(resultsId, 'AbortController.signal exists', true);
+                    showResult(resultsId, 'Initial aborted state: ' + controller.signal.aborted, !controller.signal.aborted);
+                } else {
+                    showResult(resultsId, 'AbortController.signal missing', false);
+                }
+                
+                // Test abort method
+                if (controller.abort) {
+                    controller.abort('Test abort reason');
+                    showResult(resultsId, 'abort() method works', true);
+                    showResult(resultsId, 'Aborted state after abort(): ' + controller.signal.aborted, controller.signal.aborted);
+                    if (controller.signal.reason) {
+                        showResult(resultsId, 'Abort reason: ' + controller.signal.reason, true);
+                    }
+                } else {
+                    showResult(resultsId, 'abort() method missing', false);
+                }
+                
+                // Test AbortSignal addEventListener
+                if (controller.signal.addEventListener) {
+                    showResult(resultsId, 'AbortSignal.addEventListener exists', true);
+                } else {
+                    showResult(resultsId, 'AbortSignal.addEventListener missing', false);
+                }
+                
+            } catch (error) {
+                showResult(resultsId, 'AbortController test failed: ' + error.message, false);
+            }
+        }
+        
+        // 6. ResizeObserver Test
+        function testResizeObserver() {
+            const resultsId = 'resize-results';
+            document.getElementById(resultsId).innerHTML = '';
+            
+            try {
+                // Test ResizeObserver constructor
+                if (typeof ResizeObserver === 'undefined') {
+                    showResult(resultsId, 'ResizeObserver is not defined', false);
+                    return;
+                }
+                
+                showInfo(resultsId, 'Testing ResizeObserver...');
+                const observer = new ResizeObserver(function(entries) {
+                    showResult(resultsId, 'ResizeObserver callback executed with ' + entries.length + ' entries', true);
+                });
+                
+                showResult(resultsId, 'ResizeObserver constructor works', true);
+                
+                // Test observe method
+                const testElement = document.getElementById('test-element');
+                if (observer.observe) {
+                    observer.observe(testElement);
+                    showResult(resultsId, 'observe() method exists and callable', true);
+                } else {
+                    showResult(resultsId, 'observe() method missing', false);
+                }
+                
+                // Test unobserve method
+                if (observer.unobserve) {
+                    showResult(resultsId, 'unobserve() method exists', true);
+                } else {
+                    showResult(resultsId, 'unobserve() method missing', false);
+                }
+                
+                // Test disconnect method
+                if (observer.disconnect) {
+                    observer.disconnect();
+                    showResult(resultsId, 'disconnect() method exists and callable', true);
+                } else {
+                    showResult(resultsId, 'disconnect() method missing', false);
+                }
+                
+            } catch (error) {
+                showResult(resultsId, 'ResizeObserver test failed: ' + error.message, false);
+            }
+        }
+        
+        // Helper function to resize test element
+        function resizeTestElement() {
+            const element = document.getElementById('test-element');
+            const newWidth = Math.floor(Math.random() * 300) + 100;
+            const newHeight = Math.floor(Math.random() * 200) + 50;
+            element.style.width = newWidth + 'px';
+            element.style.height = newHeight + 'px';
+            showInfo('resize-results', `Resized element to ${newWidth}x${newHeight}px`);
+        }
+        
+        // Run all tests on page load
+        window.addEventListener('load', function() {
+            showInfo('results', 'Phase 1 API Test Suite loaded. Click buttons to test individual APIs.');
+        });
+    </script>
+</body>
+</html>

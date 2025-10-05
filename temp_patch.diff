@@ -1,0 +1,215 @@
+*** Begin Patch
+*** Update File: BrowserCore/Engine/CustomHtmlEngine.cs
+@@
+-        private async Task<string> FetchHtmlContentAsync(string url)
++        private async Task<string> FetchHtmlContentAsync(string url)
+         {
+             try
+             {
+-                System.Diagnostics.Debug.WriteLine("Fetching content from: " + url);
++                System.Diagnostics.Debug.WriteLine("Fetching content from: " + url);
++
++                // Normalize common URL cases (e.g., missing trailing slash for directory paths)
++                var normalizedUrl = NormalizeUrlForRequest(url);
++                if (!string.Equals(normalizedUrl, url, StringComparison.Ordinal))
++                {
++                    System.Diagnostics.Debug.WriteLine($"NETWORK: Normalized URL to: {normalizedUrl}");
++                    url = normalizedUrl;
++                }
+@@
+-                // Handle regular HTTP/HTTPS URLs
+-                var response = await _httpClient.GetAsync(url);
++                // Handle regular HTTP/HTTPS URLs
++                var response = await _httpClient.GetAsync(url);
+                 System.Diagnostics.Debug.WriteLine($"NETWORK: Response status: {(int)response.StatusCode} {response.ReasonPhrase}");
+                 System.Diagnostics.Debug.WriteLine($"NETWORK: Final request URI: {response.RequestMessage?.RequestUri}");
+@@
+-                System.Diagnostics.Debug.WriteLine($"NETWORK: Non-success status code {(int)response.StatusCode} returned for {url}");
++                System.Diagnostics.Debug.WriteLine($"NETWORK: Non-success status code {(int)response.StatusCode} returned for {url}");
+                 if (!string.IsNullOrEmpty(primaryBody))
+                 {
+                     var snippet = primaryBody.Length > 8192 ? primaryBody.Substring(0, 8192) : primaryBody;
+                     System.Diagnostics.Debug.WriteLine($"NETWORK: Response body (snippet): {snippet}");
+                 }
+ 
+                 string fallbackBody = null;
+ 
++                // Special-case: a lot of static hosts require a trailing slash for directory indexes
++                // Try once with a trailing slash if we got a 404 and the path looks like a directory
++                try
++                {
++                    if ((int)response.StatusCode == 404)
++                    {
++                        var trySlash = TryAppendTrailingSlash(url);
++                        if (trySlash != null && !string.Equals(trySlash, url, StringComparison.Ordinal))
++                        {
++                            System.Diagnostics.Debug.WriteLine($"NETWORK: 404 detected. Retrying with trailing slash: {trySlash}");
++                            var slashResp = await _httpClient.GetAsync(trySlash);
++                            System.Diagnostics.Debug.WriteLine($"NETWORK (/ retry): Response status: {(int)slashResp.StatusCode} {slashResp.ReasonPhrase}");
++                            if (slashResp.IsSuccessStatusCode)
++                            {
++                                var slashBody = await ReadHttpContentWithCharsetFallbackAsync(slashResp, "NETWORK (/ retry)");
++                                System.Diagnostics.Debug.WriteLine($"NETWORK (/ retry): Read {(slashBody?.Length ?? 0)} characters from {trySlash}");
++                                return slashBody;
++                            }
++                            else
++                            {
++                                var slashBody = await ReadHttpContentWithCharsetFallbackAsync(slashResp, "NETWORK (/ retry)");
++                                if (!string.IsNullOrEmpty(slashBody))
++                                {
++                                    fallbackBody = slashBody;
++                                }
++                            }
++                        }
++                    }
++                }
++                catch (Exception ex)
++                {
++                    System.Diagnostics.Debug.WriteLine("NETWORK (/ retry) exception: " + ex.Message);
++                }
++
+                 try
+                 {
+                     System.Diagnostics.Debug.WriteLine("NETWORK: Attempting fallback request with browser-like headers...");
+                     var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+                     req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36");
+                     req.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                     req.Headers.TryAddWithoutValidation("Accept-Language", "en-US,en;q=0.9");
+-                    req.Headers.TryAddWithoutValidation("Referer", "https://www.google.com/");
++                    // Prefer the typed property for referrer to avoid restricted header issues
++                    try { req.Headers.Referrer = new Uri("https://www.google.com/"); } catch { /* ignore */ }
+@@
+-                    try
+-                    {
+-                        System.Diagnostics.Debug.WriteLine("NETWORK (fallback v2): Attempting stronger browser emulation headers...");
+-                        var req2 = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+-                        req2.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36");
+-                        req2.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+-                        req2.Headers.TryAddWithoutValidation("Accept-Language", "en-US,en;q=0.9");
+-                        req2.Headers.TryAddWithoutValidation("Referer", "https://www.google.com/");
+-                        req2.Headers.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+-                        req2.Headers.TryAddWithoutValidation("Sec-Fetch-Site", "none");
+-                        req2.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+-                        req2.Headers.TryAddWithoutValidation("Sec-Fetch-User", "?1");
+-                        req2.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+-                        req2.Headers.TryAddWithoutValidation("sec-ch-ua", "\"Chromium\";v=\"117\", \"Not;A Brand\";v=\"8\"");
+-                        req2.Headers.TryAddWithoutValidation("sec-ch-ua-mobile", "?0");
+-                        req2.Headers.TryAddWithoutValidation("sec-ch-ua-platform", "\"Windows\"");
+-
+-                        var fallback2 = await _httpClient.SendAsync(req2);
+-                        System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Response status: {(int)fallback2.StatusCode} {fallback2.ReasonPhrase}");
+-                        System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Final request URI: {fallback2.RequestMessage?.RequestUri}");
+-
+-                        var fallbackContent2 = await ReadHttpContentWithCharsetFallbackAsync(fallback2, "NETWORK (fallback v2)");
+-                        if (fallback2.IsSuccessStatusCode)
+-                        {
+-                            System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Read {(fallbackContent2?.Length ?? 0)} characters from {url}");
+-                            return fallbackContent2;
+-                        }
+-
+-                        if (!string.IsNullOrEmpty(fallbackContent2))
+-                        {
+-                            if (fallbackBody == null)
+-                            {
+-                                fallbackBody = fallbackContent2;
+-                            }
+-                            var snippet2 = fallbackContent2.Length > 8192 ? fallbackContent2.Substring(0, 8192) : fallbackContent2;
+-                            System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Response body (snippet): {snippet2}");
+-                        }
+-                    }
+-                    catch (Exception ex)
+-                    {
+-                        System.Diagnostics.Debug.WriteLine("NETWORK (fallback v2) exception: " + ex.Message);
+-                    }
++                    // Safer v2 fallback: use only headers allowed by HttpClient and avoid
++                    // restricted/auto-generated headers (Sec-Fetch-*, sec-ch-*, etc.).
++                    try
++                    {
++                        System.Diagnostics.Debug.WriteLine("NETWORK (fallback v2): Attempting safer browser-like headers...");
++                        var req2 = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
++                        req2.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36");
++                        // Use typed collections where possible
++                        req2.Headers.Accept.Clear();
++                        req2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
++                        req2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml", 0.9));
++                        req2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml", 0.8));
++                        req2.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.7));
++                        try { req2.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue("en-US")); } catch { }
++                        try { req2.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue("en", 0.9)); } catch { }
++                        try { req2.Headers.Referrer = new Uri("https://www.google.com/"); } catch { }
++
++                        var fallback2 = await _httpClient.SendAsync(req2);
++                        System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Response status: {(int)fallback2.StatusCode} {fallback2.ReasonPhrase}");
++                        System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Final request URI: {fallback2.RequestMessage?.RequestUri}");
++
++                        var fallbackContent2 = await ReadHttpContentWithCharsetFallbackAsync(fallback2, "NETWORK (fallback v2)");
++                        if (fallback2.IsSuccessStatusCode)
++                        {
++                            System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Read {(fallbackContent2?.Length ?? 0)} characters from {url}");
++                            return fallbackContent2;
++                        }
++
++                        if (!string.IsNullOrEmpty(fallbackContent2))
++                        {
++                            if (fallbackBody == null)
++                            {
++                                fallbackBody = fallbackContent2;
++                            }
++                            var snippet2 = fallbackContent2.Length > 8192 ? fallbackContent2.Substring(0, 8192) : fallbackContent2;
++                            System.Diagnostics.Debug.WriteLine($"NETWORK (fallback v2): Response body (snippet): {snippet2}");
++                        }
++                    }
++                    catch (Exception ex)
++                    {
++                        System.Diagnostics.Debug.WriteLine("NETWORK (fallback v2) exception: " + ex.Message);
++                    }
+                 }
+                 catch (Exception ex)
+                 {
+                     System.Diagnostics.Debug.WriteLine("NETWORK (fallback) exception: " + ex.Message);
+                 }
+@@
+             }
+             catch (Exception ex)
+             {
+                 System.Diagnostics.Debug.WriteLine("Error fetching content: " + ex.Message);
+             }
+             return null;
+         }
++
++        // Append a trailing slash for directory-like paths (no extension, no query/fragment)
++        private string TryAppendTrailingSlash(string inputUrl)
++        {
++            if (string.IsNullOrWhiteSpace(inputUrl)) return null;
++            if (!Uri.TryCreate(inputUrl, UriKind.Absolute, out var uri)) return null;
++
++            // Already has slash or file extension
++            var path = uri.AbsolutePath ?? string.Empty;
++            if (path.EndsWith("/")) return null;
++            if (path.Contains('.')) return null;
++            if (!string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment)) return null;
++
++            // Build new Uri with a trailing slash
++            var builder = new UriBuilder(uri) { Path = path + "/" };
++            return builder.Uri.ToString();
++        }
++
++        // Normalize minor URL issues before the first request.
++        private string NormalizeUrlForRequest(string inputUrl)
++        {
++            if (string.IsNullOrWhiteSpace(inputUrl)) return inputUrl;
++
++            // Add https scheme if a bare host is passed (e.g., example.com)
++            if (!inputUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
++                !inputUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
++            {
++                var guess = "https://" + inputUrl.Trim();
++                if (Uri.TryCreate(guess, UriKind.Absolute, out var _))
++                    inputUrl = guess;
++            }
++
++            // For directory-like paths without trailing slash, keep as-is; server may redirect.
++            // We’ll retry with a slash on 404 via TryAppendTrailingSlash.
++            return inputUrl;
++        }
+*** End Patch
